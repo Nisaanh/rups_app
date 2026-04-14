@@ -10,7 +10,9 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UnitKerjaController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ExportController;
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -64,8 +66,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [UnitKerjaController::class, 'store'])->name('store');
         Route::get('/statistics', [UnitKerjaController::class, 'statistics'])->name('statistics');
         Route::get('/search', [UnitKerjaController::class, 'search'])->name('search');
-        Route::post('/import', [UnitKerjaController::class, 'import'])->name('import');
-        Route::get('/export', [UnitKerjaController::class, 'export'])->name('export');
+        // Route::post('/import', [UnitKerjaController::class, 'import'])->name('import');
+        // Route::get('/export', [UnitKerjaController::class, 'export'])->name('export');
         
         Route::get('/{unitKerja}', [UnitKerjaController::class, 'show'])->name('show');
         Route::get('/{unitKerja}/edit', [UnitKerjaController::class, 'edit'])->name('edit');
@@ -109,6 +111,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{tindaklanjut}/approve', [ApprovalController::class, 'approve'])->name('approve');
         Route::post('/{tindaklanjut}/reject', [ApprovalController::class, 'reject'])->name('reject');
     });
+
+    
+  Route::get('/export', [ExportController::class, 'index'])->name('export.index');
+Route::get('/export/download', [ExportController::class, 'download'])->name('export.download');
+
 });
 
 /*
