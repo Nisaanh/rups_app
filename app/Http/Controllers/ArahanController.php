@@ -29,66 +29,74 @@ class ArahanController extends Controller
         return view('arahan.index', compact('arahan'));
     }
 
-    public function create(Request $request)
-    {
-        if (!Gate::allows('create_arahan')) {
-            abort(403);
-        }
+   public function create(Request $request)
+{
+    if (!Gate::allows('create_arahan')) {
+        abort(403);
+    }
 
-        $keputusanId = $request->get('keputusan_id');
+    $keputusanId = $request->get('keputusan_id');
 
-        $keputusanSelected = null;
-        if ($keputusanId) {
-            $keputusanSelected = Keputusan::findOrFail($keputusanId);
-        }
+    $keputusanSelected = null;
+    if ($keputusanId) {
+        $keputusanSelected = Keputusan::findOrFail($keputusanId);
+    }
 
-        $keputusan = Keputusan::whereIn('status', ['BD', 'BS'])->latest()->get();
+    $keputusan = Keputusan::whereIn('status', ['BD', 'BS'])->latest()->get();
 
-        // Ambil semua unit kerja
-        $unitKerja = UnitKerja::with(['users'])->orderBy('name')->get();
+    // Ambil unit kerja, tapi filter usernya HANYA yang memiliki role 'Auditi'
+    $unitKerja = UnitKerja::with(['users' => function($query) {
+        $query->role('Auditi'); // Menggunakan scope dari Spatie Permission
+        // Jika tidak pakai Spatie, gunakan: 
+        // $query->whereHas('roles', fn($q) => $q->where('name', 'Auditi'));
+    }])->orderBy('name')->get();
 
-        // Buat mapping unit_kerja_id => PIC (ambil user pertama dari unit tersebut)
-        $picByUnit = [];
-        foreach ($unitKerja as $unit) {
-            // Ambil user pertama dari unit ini (anggap sebagai PIC)
-            $firstUser = $unit->users->first();
-            if ($firstUser) {
+    $picByUnit = [];
+    foreach ($unitKerja as $unit) {
+        // Mencari user pertama di unit tersebut yang rolenya Auditi
+        $auditiUser = $unit->users->first();
+
+        if ($auditiUser) {
+            $picByUnit[$unit->id] = [
+                'id' => $auditiUser->id,
+                'name' => $auditiUser->name,
+                'badge' => $auditiUser->badge ?? ''
+            ];
+        } else {
+            // Jika di unit tersebut tidak ada Auditi, cari di unit parent
+            $parentUnit = $unit->parent()->with(['users' => function($q) {
+                $q->role('Auditi');
+            }])->first();
+
+            $parentAuditi = $parentUnit ? $parentUnit->users->first() : null;
+
+            if ($parentAuditi) {
                 $picByUnit[$unit->id] = [
-                    'id' => $firstUser->id,
-                    'name' => $firstUser->name,
-                    'badge' => $firstUser->badge ?? ''
+                    'id' => $parentAuditi->id,
+                    'name' => $parentAuditi->name,
+                    'badge' => $parentAuditi->badge ?? ''
                 ];
-            } else {
-                // Jika tidak ada user, coba cari dari unit parent
-                $parentUnit = $unit->parent;
-                if ($parentUnit && $parentUnit->users->first()) {
-                    $parentUser = $parentUnit->users->first();
-                    $picByUnit[$unit->id] = [
-                        'id' => $parentUser->id,
-                        'name' => $parentUser->name,
-                        'badge' => $parentUser->badge ?? ''
-                    ];
-                }
             }
         }
-
-        $existingArahan = collect();
-        if ($keputusanId) {
-            $existingArahan = Arahan::where('keputusan_id', $keputusanId)
-                ->with(['unitKerja', 'pic'])
-                ->latest()
-                ->get();
-        }
-
-        return view('arahan.create', compact(
-            'keputusan',
-            'unitKerja',
-            'keputusanId',
-            'keputusanSelected',
-            'existingArahan',
-            'picByUnit'
-        ));
     }
+
+    $existingArahan = collect();
+    if ($keputusanId) {
+        $existingArahan = Arahan::where('keputusan_id', $keputusanId)
+            ->with(['unitKerja', 'pic'])
+            ->latest()
+            ->get();
+    }
+
+    return view('arahan.create', compact(
+        'keputusan',
+        'unitKerja',
+        'keputusanId',
+        'keputusanSelected',
+        'existingArahan',
+        'picByUnit'
+    ));
+}
 
     public function store(ArahanRequest $request)
     {

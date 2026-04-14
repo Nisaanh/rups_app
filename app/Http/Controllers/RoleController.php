@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User;
-use App\Models\ActivityLog;
-use Illuminate\Support\Facades\Auth; // Tambahkan ini
+
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
